@@ -32,6 +32,7 @@ type Action =
   | { type: 'REGEN_MEAL'; dayIndex: number; slot: MealSlot }
   | { type: 'SWAP_MEAL'; dayIndex: number; slot: MealSlot; meal: PlannedMeal }
   | { type: 'SET_SOUND'; enabled: boolean }
+  | { type: 'SET_PARENT_PIN_HASH'; hash: string | null }
 
 function reducer(state: AppStateV2, action: Action): AppStateV2 {
   switch (action.type) {
@@ -80,6 +81,8 @@ function reducer(state: AppStateV2, action: Action): AppStateV2 {
     }
     case 'SET_SOUND':
       return { ...state, settings: { ...state.settings, soundEnabled: action.enabled } }
+    case 'SET_PARENT_PIN_HASH':
+      return { ...state, settings: { ...state.settings, parentPinHash: action.hash } }
     default:
       return state
   }
@@ -95,6 +98,7 @@ interface AppContextValue {
   regenMeal: (dayIndex: number, slot: MealSlot) => void
   swapMeal: (dayIndex: number, slot: MealSlot, meal: PlannedMeal) => void
   setSoundEnabled: (enabled: boolean) => void
+  setParentPinHash: (hash: string | null) => void
   getOrCreateLog: (date: string) => DailyLog
 }
 
@@ -158,6 +162,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const setParentPinHash = useCallback((hash: string | null) => {
+    dispatch({ type: 'SET_PARENT_PIN_HASH', hash })
+  }, [])
+
   const getOrCreateLog = useCallback(
     (date: string): DailyLog => {
       const existing = state.dailyLogs[date]
@@ -184,6 +192,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       regenMeal,
       swapMeal,
       setSoundEnabled,
+      setParentPinHash,
       getOrCreateLog,
     }),
     [
@@ -196,6 +205,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       regenMeal,
       swapMeal,
       setSoundEnabled,
+      setParentPinHash,
       getOrCreateLog,
     ],
   )

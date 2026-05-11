@@ -10,7 +10,7 @@ const defaultState = (): AppStateV2 => ({
   currentWeekPlan: null,
   dailyLogs: {},
   achievements: [],
-  settings: { soundEnabled: false },
+  settings: { soundEnabled: false, parentPinHash: null },
 })
 
 export function loadLocalState(): AppStateV2 {
@@ -44,7 +44,10 @@ export function mergeRemoteIntoLocal(
     currentWeekPlan: remote.currentWeekPlan ?? local.currentWeekPlan,
     dailyLogs: { ...local.dailyLogs, ...remote.dailyLogs },
     achievements: remote.achievements?.length ? remote.achievements : local.achievements,
-    settings: local.settings,
+    settings: {
+      ...local.settings,
+      ...(remote.settings ?? {}),
+    },
   }
 }
 

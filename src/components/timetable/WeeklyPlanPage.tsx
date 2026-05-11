@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MealSlot, PlannedMeal } from '../../types/models'
 import { useAppData } from '../../context/AppDataContext'
@@ -7,6 +7,8 @@ import { MEAL_EMOJI, MEAL_LABELS, MEAL_ORDER } from '../../constants/meals'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { SwapMealModal } from './SwapMealModal'
+import { useParentSessionUnlocked } from '../../hooks/useParentSessionUnlocked'
+import { ParentPinUnlockModal } from '../parent/ParentPinUnlockModal'
 
 function MealCell({
   meal,
@@ -53,8 +55,10 @@ function MealCell({
 
 export function WeeklyPlanPage() {
   const { state, regenWeek, regenDay, regenMeal, swapMeal } = useAppData()
+  const { unlocked, setUnlocked } = useParentSessionUnlocked()
   const week = state.currentWeekPlan
   const profile = state.profile
+  const pinHash = state.settings.parentPinHash
 
   const [swapCtx, setSwapCtx] = useState<{
     dayIndex: number
@@ -62,10 +66,40 @@ export function WeeklyPlanPage() {
     current: PlannedMeal
   } | null>(null)
 
+  const [pinModalOpen, setPinModalOpen] = useState(false)
+  const pendingAction = useRef<(() => void) | null>(null)
+
   const title = useMemo(() => {
     if (!week) return 'Weekly plan'
     return `Week of ${week.weekStart}`
   }, [week])
+
+  const needsPin = Boolean(pinHash) && !unlocked
+
+  const requestParent = useCallback(
+    (fn: () => void) => {
+      if (!pinHash || unlocked) {
+        fn()
+        return
+      }
+      pendingAction.current = fn
+      setPinModalOpen(true)
+    },
+    [pinHash, unlocked],
+  )
+
+  const onPinVerified = useCallback(() => {
+    setUnlocked()
+    setPinModalOpen(false)
+    const next = pendingAction.current
+    pendingAction.current = null
+    next?.()
+  }, [setUnlocked])
+
+  const closePinModal = useCallback(() => {
+    setPinModalOpen(false)
+    pendingAction.current = null
+  }, [])
 
   if (!profile || !week) {
     return (
@@ -80,6 +114,14 @@ export function WeeklyPlanPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-4 pb-28 font-[Nunito]">
+      {needsPin ? (
+        <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm font-semibold text-amber-950">
+          <span className="mr-1">🔒</span>
+          Parent controls are locked. Tap Swap, Regenerate, or New day — you will be asked for your PIN
+          once per browser session.
+        </div>
+      ) : null}
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-widest text-rose-500">Smart timetable</p>
@@ -89,7 +131,7 @@ export function WeeklyPlanPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => regenWeek()}>
+          <Button variant="secondary" onClick={() => requestParent(() => regenWeek())}>
             Regenerate week
           </Button>
         </div>
@@ -108,7 +150,7 @@ export function WeeklyPlanPage() {
               <button
                 type="button"
                 className="rounded-xl bg-rose-100 px-3 py-2 text-xs font-bold text-rose-700"
-                onClick={() => regenDay(dayIndex)}
+                onClick={() => requestParent(() => regenDay(dayIndex))}
               >
                 New day
               </button>
@@ -120,9 +162,11 @@ export function WeeklyPlanPage() {
                   meal={day[slot]}
                   slot={slot}
                   onSwap={() =>
-                    setSwapCtx({ dayIndex, slot, current: day[slot] })
+                    requestParent(() =>
+                      setSwapCtx({ dayIndex, slot, current: day[slot] }),
+                    )
                   }
-                  onRegen={() => regenMeal(dayIndex, slot)}
+                  onRegen={() => requestParent(() => regenMeal(dayIndex, slot))}
                 />
               ))}
             </div>
@@ -138,6 +182,15 @@ export function WeeklyPlanPage() {
           current={swapCtx.current}
           onClose={() => setSwapCtx(null)}
           onPick={(meal) => swapMeal(swapCtx.dayIndex, swapCtx.slot, meal)}
+        />
+      ) : null}
+
+      {pinHash ? (
+        <ParentPinUnlockModal
+          open={pinModalOpen}
+          storedHash={pinHash}
+          onVerified={onPinVerified}
+          onClose={closePinModal}
         />
       ) : null}
     </div>

@@ -1,9 +1,18 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAppData } from '../../context/AppDataContext'
 import { Card } from '../ui/Card'
 import { ACHIEVEMENTS, computeStreak, totalStarsEver } from '../../utils/achievements'
 import { computeStarsEarned, countCompletedMeals } from '../../utils/stars'
 import { MEAL_ORDER } from '../../constants/meals'
+import { useParentSessionUnlocked } from '../../hooks/useParentSessionUnlocked'
+import { clearParentSessionUnlocked } from '../../utils/parentSession'
+import {
+  ParentPinChangeForm,
+  ParentPinRemoveForm,
+  ParentPinSetupForm,
+  ParentPinUnlockForm,
+} from '../parent/ParentPinForms'
+import { Button } from '../ui/Button'
 
 function BarChart({
   data,
@@ -36,10 +45,14 @@ function BarChart({
 }
 
 export function AnalyticsPage() {
-  const { state } = useAppData()
+  const { state, setParentPinHash } = useAppData()
+  const { unlocked, setUnlocked, lockAgain } = useParentSessionUnlocked()
   const profile = state.profile
   const week = state.currentWeekPlan
   const logs = state.dailyLogs
+  const pinHash = state.settings.parentPinHash
+
+  const [pinPanel, setPinPanel] = useState<'change' | 'remove' | null>(null)
 
   const waterGoal = profile?.waterGoalMl ?? 1250
 
@@ -110,6 +123,21 @@ export function AnalyticsPage() {
 
   if (!profile) {
     return <div className="p-6 text-center font-[Nunito]">Set up a profile to see analytics.</div>
+  }
+
+  if (pinHash && !unlocked) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 p-4 pb-28 font-[Nunito]">
+        <header className="text-center">
+          <p className="text-sm font-bold uppercase tracking-widest text-indigo-600">Parent view</p>
+          <h1 className="text-3xl font-extrabold text-slate-900">Locked</h1>
+          <p className="mt-2 font-semibold text-slate-600">Enter your parent PIN to open analytics.</p>
+        </header>
+        <Card className="!p-6">
+          <ParentPinUnlockForm storedHash={pinHash} onVerified={setUnlocked} />
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -199,11 +227,11 @@ export function AnalyticsPage() {
         <h2 className="text-lg font-extrabold text-slate-900">Achievements</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {ACHIEVEMENTS.map((a) => {
-            const unlocked = state.achievements.some((x) => x.id === a.id)
+            const achUnlocked = state.achievements.some((x) => x.id === a.id)
             return (
               <div
                 key={a.id}
-                className={`rounded-2xl border-2 p-3 ${unlocked ? 'border-amber-300 bg-amber-50' : 'border-white/50 bg-white/40 opacity-70'}`}
+                className={`rounded-2xl border-2 p-3 ${achUnlocked ? 'border-amber-300 bg-amber-50' : 'border-white/50 bg-white/40 opacity-70'}`}
               >
                 <div className="text-2xl">{a.emoji}</div>
                 <p className="font-extrabold text-slate-900">{a.title}</p>
@@ -212,6 +240,62 @@ export function AnalyticsPage() {
             )
           })}
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-extrabold text-slate-900">Parent PIN</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-600">
+          {pinHash
+            ? 'PIN protects this screen and meal-plan edits until you unlock for this session.'
+            : 'Optional: add a 4–6 digit PIN so kids cannot change the plan or open parent analytics.'}
+        </p>
+        {!pinHash ? (
+          <div className="mt-4">
+            <ParentPinSetupForm
+              onHashed={(h) => {
+                setParentPinHash(h)
+                setUnlocked()
+              }}
+            />
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {pinPanel === null ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button variant="secondary" onClick={() => lockAgain()}>
+                  Lock now
+                </Button>
+                <Button variant="secondary" onClick={() => setPinPanel('change')}>
+                  Change PIN
+                </Button>
+                <Button variant="danger" onClick={() => setPinPanel('remove')}>
+                  Remove PIN
+                </Button>
+              </div>
+            ) : null}
+            {pinPanel === 'change' && pinHash ? (
+              <ParentPinChangeForm
+                currentHash={pinHash}
+                onHashed={(h) => {
+                  setParentPinHash(h)
+                  setPinPanel(null)
+                }}
+                onCancel={() => setPinPanel(null)}
+              />
+            ) : null}
+            {pinPanel === 'remove' && pinHash ? (
+              <ParentPinRemoveForm
+                currentHash={pinHash}
+                onRemoved={() => {
+                  setParentPinHash(null)
+                  clearParentSessionUnlocked()
+                  setPinPanel(null)
+                }}
+                onCancel={() => setPinPanel(null)}
+              />
+            ) : null}
+          </div>
+        )}
       </Card>
     </div>
   )

@@ -82,6 +82,8 @@ export interface AchievementUnlock {
 
 export interface AppSettings {
   soundEnabled: boolean
+  /** SHA-256 hex of PIN + salt; null = not configured yet */
+  parentPinHash: string | null
 }
 
 export interface AppStateV2 {
