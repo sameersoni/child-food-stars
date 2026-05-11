@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "SF Pro Rounded", ui-rounded, "Nunito", system-ui, sans-serif;
+  --font-sans: "SF Pro Text", system-ui, -apple-system, sans-serif;
+  --color-cream: #fffbf5;
+  --color-peach: #ffd8c2;
+  --color-mint: #b8f2d8;
+  --color-sky-soft: #c8e7ff;
+  --color-lavender: #e4d4ff;
+  --color-sun: #ffe066;
+  --color-coral: #ff6b6b;
+  --color-deep: #1a1a2e;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  background: linear-gradient(165deg, #fff5eb 0%, #ffe8f0 35%, #e8f4ff 100%);
+  color: var(--color-deep);
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.92;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: 283;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: -12px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 9999;
+  animation: confetti-fall 2.8s ease-in forwards;
+}

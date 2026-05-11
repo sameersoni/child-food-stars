@@ -1,0 +1,19 @@
+{
+  "profile": {
+    "childName": "Your Child",
+    "age": 7,
+    "favoriteFoods": ["Dosa", "Pasta"],
+    "favoriteFruits": ["Mango", "Apple"],
+    "favoriteVegetables": ["Carrot", "Peas"],
+    "dislikedFoods": ["Very spicy"],
+    "diet": "vegetarian",
+    "waterGoalMl": 1250,
+    "schoolDays": [0, 1, 2, 3, 4],
+    "schoolStartTime": "08:15",
+    "schoolEndTime": "14:45",
+    "onboardingComplete": true,
+    "createdAt": "2026-05-01T10:00:00.000Z",
+    "avatarEmoji": "🦄"
+  },
+  "note": "Import via DevTools or merge into localStorage key tanvi_food_stars_v2 for demos."
+}
