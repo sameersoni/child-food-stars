@@ -1,5 +1,24 @@
 import { useMemo, useState } from 'react'
 import type { ChildProfile, MealSlot, PlannedMeal } from '../../types/models'
+
+/** Infer nutrition tags from a food name using keyword matching. */
+function inferTagsFromName(name: string): string[] {
+  const n = name.toLowerCase()
+  const tags = new Set<string>(['custom'])
+  const match = (keywords: string[], tag: string) => {
+    if (keywords.some((k) => n.includes(k))) tags.add(tag)
+  }
+  match(['milk', 'milkshake', 'yogurt', 'curd', 'dahi', 'paneer', 'cheese', 'butter', 'ghee', 'cream', 'lassi', 'raita', 'kheer'], 'dairy')
+  match(['milk', 'yogurt', 'curd', 'dahi', 'paneer', 'cheese', 'ragi', 'sesame', 'til', 'broccoli'], 'calcium')
+  match(['chicken', 'fish', 'egg', 'dal', 'lentil', 'rajma', 'chole', 'chana', 'soya', 'tofu', 'paneer', 'meat', 'mutton', 'prawn', 'tuna', 'salmon', 'beans', 'peanut', 'almond', 'badam'], 'protein')
+  match(['apple', 'banana', 'mango', 'orange', 'grape', 'papaya', 'watermelon', 'pear', 'pineapple', 'kiwi', 'berry', 'berries', 'guava', 'melon', 'pomegranate', 'strawberry', 'fruit', 'fruits'], 'fruit')
+  match(['spinach', 'palak', 'carrot', 'broccoli', 'peas', 'beans', 'corn', 'cabbage', 'cauliflower', 'tomato', 'cucumber', 'vegetable', 'sabzi', 'salad', 'beetroot', 'lauki', 'gourd', 'capsicum', 'onion', 'mushroom'], 'vegetables')
+  match(['rice', 'roti', 'bread', 'toast', 'noodle', 'pasta', 'cereal', 'oat', 'poha', 'upma', 'idli', 'dosa', 'paratha', 'wheat', 'maida', 'atta', 'quinoa', 'barley', 'biryani', 'pulao', 'khichdi'], 'carbs')
+  match(['oat', 'flaxseed', 'chia', 'rajma', 'beans', 'lentil', 'dal', 'apple', 'banana', 'broccoli', 'whole grain', 'multigrain', 'bran'], 'fiber')
+  match(['spinach', 'palak', 'rajma', 'beans', 'lentil', 'dal', 'egg', 'chicken', 'fish', 'tofu', 'broccoli', 'beetroot', 'pumpkin seed'], 'iron')
+  match(['water', 'soup', 'juice', 'coconut', 'buttermilk', 'chaas', 'watermelon', 'cucumber'], 'hydration-friendly')
+  return [...tags]
+}
 import { swapSuggestions } from '../../engine/timetableEngine'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
@@ -33,6 +52,11 @@ export function SwapMealModal({
 
   if (!open) return null
 
+  const inferredTags = useMemo(
+    () => (customName.trim() ? inferTagsFromName(customName) : []),
+    [customName],
+  )
+
   const handleCustomAdd = () => {
     const name = customName.trim()
     if (!name) return
@@ -40,7 +64,7 @@ export function SwapMealModal({
       foodId: `custom_${Date.now()}`,
       name,
       emoji: customEmoji,
-      tags: ['custom'],
+      tags: inferredTags,
     }
     onPick(meal)
     onClose()
@@ -97,6 +121,15 @@ export function SwapMealModal({
               ))}
             </div>
           ) : null}
+          {inferredTags.filter((t) => t !== 'custom').length > 0 && (
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              Detected:{' '}
+              {inferredTags
+                .filter((t) => t !== 'custom')
+                .map((t) => <span key={t} className="mr-1 rounded-full bg-white/80 px-2 py-0.5 font-bold text-rose-600">{t}</span>)
+              }
+            </p>
+          )}
           <Button
             className="mt-3 w-full"
             disabled={!customName.trim()}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppData } from '../../context/AppDataContext'
 import { Card } from '../ui/Card'
@@ -48,7 +48,9 @@ function BarChart({
 
 export function AnalyticsPage() {
   const navigate = useNavigate()
-  const { state, setParentPinHash } = useAppData()
+  const { state, setParentPinHash, addReward, removeReward } = useAppData()
+  const [newReward, setNewReward] = useState('')
+  const rewardInputRef = useRef<HTMLInputElement>(null)
   const { unlocked, setUnlocked, lockAgain } = useParentSessionUnlocked()
   const profile = state.profile
   const week = state.currentWeekPlan
@@ -278,6 +280,69 @@ export function AnalyticsPage() {
             Download meal plan CSV
           </Button>
         </div>
+      </Card>
+
+      {/* Weekly Rewards management */}
+      <Card>
+        <h2 className="text-lg font-extrabold text-slate-900">Weekly Rewards 🎁</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-600">
+          Add rewards here. At the start of each week your child picks one to work toward.
+          They earn it by hitting 80% of stars Mon–Sat.
+        </p>
+
+        {/* Add reward */}
+        <div className="mt-4 flex gap-2">
+          <input
+            ref={rewardInputRef}
+            className="min-h-[48px] flex-1 rounded-2xl border border-slate-200 bg-white/80 px-4 text-base font-semibold outline-none focus:ring-2 focus:ring-amber-300"
+            placeholder="e.g. Extra screen time, Ice cream…"
+            value={newReward}
+            onChange={(e) => setNewReward(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const t = newReward.trim()
+                if (t) { addReward(t); setNewReward('') }
+              }
+            }}
+          />
+          <Button
+            variant="secondary"
+            className="shrink-0 border-amber-200 text-amber-700"
+            onClick={() => {
+              const t = newReward.trim()
+              if (t) { addReward(t); setNewReward('') }
+            }}
+            disabled={!newReward.trim()}
+          >
+            Add
+          </Button>
+        </div>
+
+        {/* Reward list */}
+        {state.rewards.length > 0 ? (
+          <ul className="mt-4 flex flex-col gap-2">
+            {state.rewards.map((r) => (
+              <li
+                key={r}
+                className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3"
+              >
+                <span className="text-xl">🎁</span>
+                <span className="flex-1 font-bold text-slate-900">{r}</span>
+                <button
+                  type="button"
+                  onClick={() => removeReward(r)}
+                  className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-red-500 shadow-sm transition hover:bg-red-50"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm font-semibold text-slate-400">
+            No rewards added yet — add one above!
+          </p>
+        )}
       </Card>
 
       <Card>

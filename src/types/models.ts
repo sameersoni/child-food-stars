@@ -94,6 +94,10 @@ export interface AppStateV2 {
   dailyLogs: Record<string, DailyLog>
   achievements: AchievementUnlock[]
   settings: AppSettings
+  /** Parent-managed list of reward options */
+  rewards: string[]
+  /** weekStart (Monday ISO date) -> reward chosen by kid for that week */
+  weekRewards: Record<string, string>
 }
 
 /** Analytics-ready daily rollup (derived or stored) */

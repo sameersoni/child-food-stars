@@ -19,6 +19,8 @@ const defaultState = (): AppStateV2 => ({
   dailyLogs: {},
   achievements: [],
   settings: { soundEnabled: false, parentPinHash: null },
+  rewards: [],
+  weekRewards: {},
 })
 
 // ─── User list ───────────────────────────────────────────────────────────────

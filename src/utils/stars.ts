@@ -1,4 +1,4 @@
-import type { DailyMealCompletion, MealSlot } from '../types/models'
+import type { DailyLog, DailyMealCompletion, MealSlot } from '../types/models'
 
 /** Star rules: positive rewards only. */
 export const STARS_PER_SLOT: Record<MealSlot, number> = {
@@ -44,6 +44,26 @@ export function computeStarsEarned(
     meals.dinner
   if (allMeals) stars += STARS_ALL_MEALS_BONUS
   return stars
+}
+
+/**
+ * Mon–Sat eligibility for the weekly reward.
+ * Sunday (index 6) is a relaxed day and excluded from the target.
+ */
+export function computeWeekEligibility(
+  weekDays: { date: string }[],
+  dailyLogs: Record<string, DailyLog>,
+  waterGoalMl: number,
+): { earned: number; max: number; pct: number; eligible: boolean } {
+  const monToSat = weekDays.slice(0, 6)
+  const max = maxStarsForDay() * monToSat.length
+  let earned = 0
+  monToSat.forEach(({ date }) => {
+    const log = dailyLogs[date]
+    if (log) earned += computeStarsEarned(log.meals, log.waterMl, waterGoalMl)
+  })
+  const pct = max > 0 ? Math.round((earned / max) * 100) : 0
+  return { earned, max, pct, eligible: pct >= 80 }
 }
 
 export function emptyMeals(): DailyMealCompletion {

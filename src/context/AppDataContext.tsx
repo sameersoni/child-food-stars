@@ -40,6 +40,9 @@ type Action =
   | { type: 'SWAP_MEAL'; dayIndex: number; slot: MealSlot; meal: PlannedMeal }
   | { type: 'SET_SOUND'; enabled: boolean }
   | { type: 'SET_PARENT_PIN_HASH'; hash: string | null }
+  | { type: 'ADD_REWARD'; reward: string }
+  | { type: 'REMOVE_REWARD'; reward: string }
+  | { type: 'SET_WEEK_REWARD'; weekStart: string; reward: string }
 
 function reducer(state: AppStateV2, action: Action): AppStateV2 {
   switch (action.type) {
@@ -90,6 +93,14 @@ function reducer(state: AppStateV2, action: Action): AppStateV2 {
       return { ...state, settings: { ...state.settings, soundEnabled: action.enabled } }
     case 'SET_PARENT_PIN_HASH':
       return { ...state, settings: { ...state.settings, parentPinHash: action.hash } }
+    case 'ADD_REWARD': {
+      if (state.rewards.includes(action.reward)) return state
+      return { ...state, rewards: [...state.rewards, action.reward] }
+    }
+    case 'REMOVE_REWARD':
+      return { ...state, rewards: state.rewards.filter((r) => r !== action.reward) }
+    case 'SET_WEEK_REWARD':
+      return { ...state, weekRewards: { ...state.weekRewards, [action.weekStart]: action.reward } }
     default:
       return state
   }
@@ -116,6 +127,9 @@ interface AppContextValue {
   setSoundEnabled: (enabled: boolean) => void
   setParentPinHash: (hash: string | null) => void
   getOrCreateLog: (date: string) => DailyLog
+  addReward: (reward: string) => void
+  removeReward: (reward: string) => void
+  setWeekReward: (weekStart: string, reward: string) => void
 }
 
 const AppDataContext = createContext<AppContextValue | null>(null)
@@ -124,7 +138,7 @@ function initState(): AppStateV2 {
   migrateLegacyIfNeeded()
   const active = getActiveUser()
   if (active) return withEvaluatedAchievements(loadUserState(active))
-  return { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null } }
+  return { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null }, rewards: [], weekRewards: {} }
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
@@ -169,7 +183,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setActiveUser(trimmed)
     setActiveUserState(trimmed)
     // Load fresh empty state for new user
-    dispatch({ type: 'HYDRATE', state: { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null } } })
+    dispatch({ type: 'HYDRATE', state: { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null }, rewards: [], weekRewards: {} } })
     return null
   }, [])
 
@@ -187,7 +201,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (activeUser === name) {
       setActiveUser(null)
       setActiveUserState(null)
-      dispatch({ type: 'HYDRATE', state: { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null } } })
+      dispatch({ type: 'HYDRATE', state: { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null }, rewards: [], weekRewards: {} } })
     }
   }, [activeUser])
 
@@ -227,6 +241,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_PARENT_PIN_HASH', hash })
   }, [])
 
+  const addReward = useCallback((reward: string) => {
+    dispatch({ type: 'ADD_REWARD', reward })
+  }, [])
+  const removeReward = useCallback((reward: string) => {
+    dispatch({ type: 'REMOVE_REWARD', reward })
+  }, [])
+  const setWeekReward = useCallback((weekStart: string, reward: string) => {
+    dispatch({ type: 'SET_WEEK_REWARD', weekStart, reward })
+  }, [])
+
   const getOrCreateLog = useCallback(
     (date: string): DailyLog => {
       const existing = state.dailyLogs[date]
@@ -260,6 +284,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setSoundEnabled,
       setParentPinHash,
       getOrCreateLog,
+      addReward,
+      removeReward,
+      setWeekReward,
     }),
     [
       state, activeUser, userList,
@@ -267,6 +294,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       completeOnboarding, setWeekPlan, upsertLog,
       regenWeek, regenDay, regenMeal, swapMeal,
       setSoundEnabled, setParentPinHash, getOrCreateLog,
+      addReward, removeReward, setWeekReward,
     ],
   )
 
