@@ -4,7 +4,6 @@ import { useAppData } from '../../context/AppDataContext'
 import { ConfettiBurst } from '../ui/Confetti'
 import { ProgressRing } from '../ui/ProgressRing'
 import { Card } from '../ui/Card'
-import { Button } from '../ui/Button'
 import {
   STARS_ALL_MEALS_BONUS,
   STARS_PER_SLOT,
@@ -64,13 +63,13 @@ function StarsContent({
       starsEarned: computeStarsEarned(next, log.waterMl, waterGoal),
       updatedAt: new Date().toISOString(),
     })
-    if (state.settings.soundEnabled) playStarChime(audioRef.current)
+    if (state.settings.soundEnabled) void playStarChime(audioRef.current)
     setCelebrate(true)
     window.setTimeout(() => setCelebrate(false), 1200)
   }
 
   const addWater = (ml: number) => {
-    const nextMl = log.waterMl + ml
+    const nextMl = Math.max(0, log.waterMl + ml)
     upsertLog({
       ...log,
       waterMl: nextMl,
@@ -201,13 +200,43 @@ function StarsContent({
             style={{ width: `${waterPct}%` }}
           />
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => addWater(250)}>
-            +250 ml
-          </Button>
-          <Button variant="secondary" onClick={() => addWater(500)}>
-            +500 ml
-          </Button>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="flex rounded-2xl border border-slate-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => addWater(-250)}
+              disabled={log.waterMl === 0}
+              className="flex-1 py-3 text-sm font-extrabold text-slate-500 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 transition"
+            >
+              −250
+            </button>
+            <span className="flex items-center px-2 text-xs font-bold text-slate-400">ml</span>
+            <button
+              type="button"
+              onClick={() => addWater(250)}
+              className="flex-1 py-3 text-sm font-extrabold text-sky-600 bg-sky-50 hover:bg-sky-100 transition"
+            >
+              +250
+            </button>
+          </div>
+          <div className="flex rounded-2xl border border-slate-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => addWater(-500)}
+              disabled={log.waterMl === 0}
+              className="flex-1 py-3 text-sm font-extrabold text-slate-500 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 transition"
+            >
+              −500
+            </button>
+            <span className="flex items-center px-2 text-xs font-bold text-slate-400">ml</span>
+            <button
+              type="button"
+              onClick={() => addWater(500)}
+              className="flex-1 py-3 text-sm font-extrabold text-sky-600 bg-sky-50 hover:bg-sky-100 transition"
+            >
+              +500
+            </button>
+          </div>
         </div>
         <label className="mt-4 flex items-center gap-3 text-sm font-bold text-slate-700">
           <input
