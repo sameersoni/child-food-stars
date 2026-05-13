@@ -5,18 +5,25 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useState,
   type ReactNode,
 } from 'react'
 import type { AppStateV2, ChildProfile, DailyLog, MealSlot, PlannedMeal } from '../types/models'
 import { generateWeekPlan, regenerateFullDay, regenerateSingleMeal } from '../engine/timetableEngine'
 import {
-  loadLocalState,
+  addUserToList,
+  deleteUserData,
+  getActiveUser,
+  getUserList,
+  loadUserState,
+  migrateLegacyIfNeeded,
   pushAchievementsToSheets,
   pushDailyLogToSheets,
   pushProfileToSheets,
   pushWeekToSheets,
   recomputeLogStars,
-  saveLocalState,
+  saveUserState,
+  setActiveUser,
   tryHydrateFromSheets,
   withEvaluatedAchievements,
 } from '../services/storageService'
@@ -89,7 +96,16 @@ function reducer(state: AppStateV2, action: Action): AppStateV2 {
 }
 
 interface AppContextValue {
+  // Current user's data
   state: AppStateV2
+  // User management
+  activeUser: string | null
+  userList: string[]
+  /** Create a new user — returns an error string if the name already exists. */
+  createUser: (name: string) => string | null
+  switchUser: (name: string) => void
+  deleteUser: (name: string) => void
+  // Data operations
   completeOnboarding: (profile: ChildProfile) => void
   setWeekPlan: (week: AppStateV2['currentWeekPlan']) => void
   upsertLog: (log: DailyLog) => void
@@ -104,32 +120,78 @@ interface AppContextValue {
 
 const AppDataContext = createContext<AppContextValue | null>(null)
 
-export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, () =>
-    withEvaluatedAchievements(loadLocalState()),
-  )
+function initState(): AppStateV2 {
+  migrateLegacyIfNeeded()
+  const active = getActiveUser()
+  if (active) return withEvaluatedAchievements(loadUserState(active))
+  return { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null } }
+}
 
+export function AppDataProvider({ children }: { children: ReactNode }) {
+  const [activeUser, setActiveUserState] = useState<string | null>(() => getActiveUser())
+  const [userList, setUserList] = useState<string[]>(() => getUserList())
+  const [state, dispatch] = useReducer(reducer, undefined, initState)
+
+  // Sync from sheets on mount
   useEffect(() => {
+    if (!activeUser) return
     let cancelled = false
     ;(async () => {
-      const local = loadLocalState()
+      const local = loadUserState(activeUser)
       const merged = await tryHydrateFromSheets(local)
       if (!cancelled) dispatch({ type: 'HYDRATE', state: merged })
     })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    return () => { cancelled = true }
+  }, [activeUser])
 
+  // Persist state to user-specific key whenever it changes
   useEffect(() => {
-    saveLocalState(state)
-  }, [state])
+    if (activeUser) saveUserState(activeUser, state)
+  }, [activeUser, state])
 
+  // Push to sheets when key data changes
   useEffect(() => {
     if (state.profile) void pushProfileToSheets(state.profile)
     if (state.currentWeekPlan) void pushWeekToSheets(state.currentWeekPlan)
     void pushAchievementsToSheets(state.achievements)
   }, [state.profile, state.currentWeekPlan, state.achievements])
+
+  // ── User management ────────────────────────────────────────────────────────
+
+  const createUser = useCallback((name: string): string | null => {
+    const trimmed = name.trim()
+    const list = getUserList()
+    if (list.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      return `A profile named "${trimmed}" already exists.`
+    }
+    addUserToList(trimmed)
+    setUserList(getUserList())
+    setActiveUser(trimmed)
+    setActiveUserState(trimmed)
+    // Load fresh empty state for new user
+    dispatch({ type: 'HYDRATE', state: { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null } } })
+    return null
+  }, [])
+
+  const switchUser = useCallback((name: string) => {
+    setActiveUser(name)
+    setActiveUserState(name)
+    const loaded = loadUserState(name)
+    dispatch({ type: 'HYDRATE', state: withEvaluatedAchievements(loaded) })
+  }, [])
+
+  const deleteUser = useCallback((name: string) => {
+    deleteUserData(name)
+    const newList = getUserList()
+    setUserList(newList)
+    if (activeUser === name) {
+      setActiveUser(null)
+      setActiveUserState(null)
+      dispatch({ type: 'HYDRATE', state: { profile: null, currentWeekPlan: null, dailyLogs: {}, achievements: [], settings: { soundEnabled: false, parentPinHash: null } } })
+    }
+  }, [activeUser])
+
+  // ── Data operations ────────────────────────────────────────────────────────
 
   const completeOnboarding = useCallback((profile: ChildProfile) => {
     const week = generateWeekPlan(profile)
@@ -161,7 +223,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     (enabled: boolean) => dispatch({ type: 'SET_SOUND', enabled }),
     [],
   )
-
   const setParentPinHash = useCallback((hash: string | null) => {
     dispatch({ type: 'SET_PARENT_PIN_HASH', hash })
   }, [])
@@ -184,6 +245,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       state,
+      activeUser,
+      userList,
+      createUser,
+      switchUser,
+      deleteUser,
       completeOnboarding,
       setWeekPlan,
       upsertLog,
@@ -196,24 +262,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       getOrCreateLog,
     }),
     [
-      state,
-      completeOnboarding,
-      setWeekPlan,
-      upsertLog,
-      regenWeek,
-      regenDay,
-      regenMeal,
-      swapMeal,
-      setSoundEnabled,
-      setParentPinHash,
-      getOrCreateLog,
+      state, activeUser, userList,
+      createUser, switchUser, deleteUser,
+      completeOnboarding, setWeekPlan, upsertLog,
+      regenWeek, regenDay, regenMeal, swapMeal,
+      setSoundEnabled, setParentPinHash, getOrCreateLog,
     ],
   )
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
 }
 
-/** Hook used across routes; colocated with provider for clarity. */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useAppData(): AppContextValue {
   const ctx = useContext(AppDataContext)

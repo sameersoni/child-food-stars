@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 const nav = [
   { to: '/plan', label: 'Plan', emoji: '📅' },
   { to: '/stars', label: 'Stars', emoji: '⭐' },
+  { to: '/report', label: 'Report', emoji: '🥗' },
   { to: '/analytics', label: 'Parents', emoji: '📊' },
 ]
 
@@ -18,7 +19,7 @@ export function AppShell() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex min-h-[52px] min-w-[72px] flex-1 flex-col items-center justify-center rounded-2xl text-xs font-extrabold transition ${
+                `flex min-h-[52px] min-w-[64px] flex-1 flex-col items-center justify-center rounded-2xl text-xs font-extrabold transition ${
                   isActive ? 'bg-rose-500 text-white shadow-lg' : 'text-slate-600'
                 }`
               }

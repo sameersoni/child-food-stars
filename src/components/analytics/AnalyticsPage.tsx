@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppData } from '../../context/AppDataContext'
 import { Card } from '../ui/Card'
 import { ACHIEVEMENTS, computeStreak, totalStarsEver } from '../../utils/achievements'
@@ -13,6 +14,7 @@ import {
   ParentPinUnlockForm,
 } from '../parent/ParentPinForms'
 import { Button } from '../ui/Button'
+import { exportDailyLogsCSV, exportMealPlanCSV, setActiveUser } from '../../services/storageService'
 
 function BarChart({
   data,
@@ -45,6 +47,7 @@ function BarChart({
 }
 
 export function AnalyticsPage() {
+  const navigate = useNavigate()
   const { state, setParentPinHash } = useAppData()
   const { unlocked, setUnlocked, lockAgain } = useParentSessionUnlocked()
   const profile = state.profile
@@ -121,6 +124,11 @@ export function AnalyticsPage() {
     return total === 0 ? 0 : Math.round((done / total) * 100)
   }, [last7, logs])
 
+  const handleSwitchUser = () => {
+    setActiveUser(null)
+    navigate('/users')
+  }
+
   if (!profile) {
     return <div className="p-6 text-center font-[Nunito]">Set up a profile to see analytics.</div>
   }
@@ -142,12 +150,17 @@ export function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 pb-28 font-[Nunito]">
-      <header>
-        <p className="text-sm font-bold uppercase tracking-widest text-indigo-600">Parent view</p>
-        <h1 className="text-3xl font-extrabold text-slate-900">Analytics</h1>
-        <p className="mt-1 font-semibold text-slate-600">
-          Lightweight signals — designed to export cleanly later.
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-widest text-indigo-600">Parent view</p>
+          <h1 className="text-3xl font-extrabold text-slate-900">Analytics</h1>
+          <p className="mt-1 font-semibold text-slate-600">
+            {profile.childName} · {profile.avatarEmoji ?? '⭐'}
+          </p>
+        </div>
+        <Button variant="secondary" onClick={handleSwitchUser}>
+          Switch profile
+        </Button>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -239,6 +252,31 @@ export function AnalyticsPage() {
               </div>
             )
           })}
+        </div>
+      </Card>
+
+      {/* CSV Export */}
+      <Card>
+        <h2 className="text-lg font-extrabold text-slate-900">Export data</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-600">
+          Download your data as CSV files to open in Excel or Google Sheets.
+        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onClick={() => exportDailyLogsCSV(state)}
+          >
+            Download daily logs CSV
+          </Button>
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onClick={() => exportMealPlanCSV(state)}
+            disabled={!week}
+          >
+            Download meal plan CSV
+          </Button>
         </div>
       </Card>
 

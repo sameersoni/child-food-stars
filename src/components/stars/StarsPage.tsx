@@ -141,6 +141,26 @@ function StarsContent({
             {MEAL_ORDER.map((slot) => {
               const meal = dayPlan[slot]
               const done = log.meals[slot]
+              const isSkipped = meal.foodId === 'skipped'
+
+              if (isSkipped) {
+                return (
+                  <div
+                    key={slot}
+                    className="flex items-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4"
+                  >
+                    <span className="text-3xl opacity-40">⏭️</span>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold uppercase text-slate-400">
+                        {MEAL_LABELS[slot]} · skipped
+                      </p>
+                      <p className="font-extrabold text-slate-400 italic">No meal planned</p>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400">0⭐</span>
+                  </div>
+                )
+              }
+
               return (
                 <button
                   key={slot}
